@@ -1,0 +1,12 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "SecureVoting - API Metrics",
+    "panels": [
+      {
+        "type": "graph",
+        "title": "API Requests"
+      }
+    ]
+  }
+}

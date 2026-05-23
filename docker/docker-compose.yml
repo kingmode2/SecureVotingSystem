@@ -1,0 +1,95 @@
+version: '3.8'
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: YOUR_PASSWORD
+      MYSQL_DATABASE: SecureVotingDB
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - securevoting_net
+
+  backend:
+    build:
+      context: ../backend/SecureVotingSystem
+      dockerfile: ../Dockerfile
+    depends_on:
+      - mysql
+      - mailhog
+    environment:
+      - ConnectionStrings__DefaultConnection=server=mysql;port=3306;database=SecureVotingDB;user=root;password=YOUR_PASSWORD
+      - MailSettings__Host=mailhog
+      - MailSettings__Port=1025
+      - MailSettings__EnableSsl=false
+      - MailSettings__SenderEmail=no-reply@securevoting.local
+      - MailSettings__SenderName="Secure Voting System"
+    ports:
+      - "5000:5000"
+    networks:
+      - securevoting_net
+
+  frontend:
+    build:
+      context: ../frontend
+      args:
+        VITE_API_BASE: "http://localhost:5000/api"
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+    networks:
+      - securevoting_net
+
+  jenkins:
+    image: jenkins/jenkins:lts
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - jenkins-data:/var/jenkins_home
+    networks:
+      - securevoting_net
+
+  prometheus:
+    image: prom/prometheus
+    restart: unless-stopped
+    volumes:
+      - ../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - securevoting_net
+
+  grafana:
+    image: grafana/grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - securevoting_net
+
+  mailhog:
+    image: mailhog/mailhog
+    restart: unless-stopped
+    ports:
+      - "8025:8025" # Web UI
+      - "1025:1025" # SMTP
+    networks:
+      - securevoting_net
+
+volumes:
+  mysql-data:
+  jenkins-data:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  securevoting_net:
+    driver: bridge
