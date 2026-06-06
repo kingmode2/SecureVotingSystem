@@ -5,6 +5,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using SecureVotingSystem.Data;
 using SecureVotingSystem.Models;
 
@@ -22,13 +23,15 @@ namespace SecureVotingSystem.Services
         private readonly Channel<OtpTaskItem> _channel = Channel.CreateUnbounded<OtpTaskItem>();
         private readonly IServiceProvider _serviceProvider;
         private readonly IMemoryCache _memoryCache;
+        private readonly ILogger<AuthTaskQueueService> _logger;
         private const string DUPLICATE_REQUEST_KEY = "login_request_{0}";
         private const int DUPLICATE_REQUEST_WINDOW_SECONDS = 2; // Prevent duplicates within 2 seconds
 
-        public AuthTaskQueueService(IServiceProvider serviceProvider, IMemoryCache memoryCache)
+        public AuthTaskQueueService(IServiceProvider serviceProvider, IMemoryCache memoryCache, ILogger<AuthTaskQueueService> logger)
         {
             _serviceProvider = serviceProvider;
             _memoryCache = memoryCache;
+            _logger = logger;
         }
 
         private static string NormalizeEmail(string email)
@@ -85,7 +88,7 @@ namespace SecureVotingSystem.Services
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[AuthTaskQueue] Error processing OTP task for {item.Email}: {ex.Message}");
+                    _logger.LogError(ex, "Error processing OTP task for {Email}", item.Email);
                 }
             }
         }
@@ -115,58 +118,13 @@ namespace SecureVotingSystem.Services
                 await db.SaveChangesAsync(cancellationToken);
 
                 // Send OTP email asynchronously without blocking the request pipeline
-                await SendOtpEmailAsync(item.Email, item.Otp, config);
+                var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+                await emailService.SendOtpEmailAsync(item.Email, item.Otp, cancellationToken);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[AuthTaskQueue] Failed to process OTP for {item.Email}: {ex.Message}");
-            }
-        }
-
-        private async Task SendOtpEmailAsync(string destinationEmail, string otp, IConfiguration config)
-        {
-            try
-            {
-                var mailSection = config.GetSection("MailSettings");
-                var host = mailSection["Host"] ?? "localhost";
-                var port = int.TryParse(mailSection["Port"], out var parsedPort) ? parsedPort : 1025;
-                var enableSsl = bool.TryParse(mailSection["EnableSsl"], out var ssl) ? ssl : false;
-                var senderEmail = mailSection["SenderEmail"] ?? "no-reply@securevoting.local";
-                var senderName = mailSection["SenderName"] ?? "Secure Voting System";
-                var timeoutSeconds = int.TryParse(mailSection["TimeoutSeconds"], out var timeout) ? timeout : 5;
-
-                using var message = new System.Net.Mail.MailMessage();
-                message.From = new System.Net.Mail.MailAddress(senderEmail, senderName);
-                message.To.Add(new System.Net.Mail.MailAddress(destinationEmail));
-                message.Subject = "Your SecureVoting OTP Code";
-
-                var htmlBody = $@"
-                        <html>
-                        <body style='font-family: Arial, sans-serif; color:#333;'>
-                            <h2 style='color:#2a6fdb;'>Your SecureVoting OTP</h2>
-                            <p>Your one-time verification code is:</p>
-                            <div style='font-size:24px; font-weight:bold; margin:12px 0; letter-spacing:4px;'>{otp}</div>
-                            <p style='color:#666;'>This code is valid for 5 minutes. If you did not request this, please ignore this email.</p>
-                            <hr />
-                            <p style='font-size:12px; color:#999;'>SecureVoting System</p>
-                        </body>
-                        </html>
-                ";
-
-                message.Body = htmlBody;
-                message.IsBodyHtml = true;
-
-                using var smtpClient = new System.Net.Mail.SmtpClient(host, port)
-                {
-                    EnableSsl = enableSsl,
-                    Timeout = timeoutSeconds * 1000
-                };
-
-                await smtpClient.SendMailAsync(message);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[SMTP] Failed to send OTP email to {destinationEmail}: {ex.Message}");
+                _logger.LogError(ex, "Failed to process OTP task for {Email}", item.Email);
+                throw;
             }
         }
     }

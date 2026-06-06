@@ -502,3 +502,6 @@ C:\Users\franz\Downloads\SecureVotingSystem\backend\SecureVotingSystem\bin\Debug
 C:\Users\franz\Downloads\SecureVotingSystem\backend\SecureVotingSystem\bin\Debug\net8.0\build_temp\temp_buildDebug\net8.0\SecureVotingSystem.deps.json
 C:\Users\franz\Downloads\SecureVotingSystem\backend\SecureVotingSystem\bin\Debug\net8.0\build_temp\temp_buildDebug\net8.0\SecureVotingSystem.runtimeconfig.json
 C:\Users\franz\Downloads\SecureVotingSystem\backend\SecureVotingSystem\bin\Debug\net8.0\build_temp\temp_buildDebug\net8.0\SecureVotingSystem.staticwebassets.endpoints.json
+C:\Users\franz\Downloads\SecureVotingSystem\backend\SecureVotingSystem\obj\Debug\net8.0\SecureVotingSystem.sourcelink.json
+C:\Users\franz\Downloads\SecureVotingSystem\backend\SecureVotingSystem\bin\Debug\net8.0\Npgsql.dll
+C:\Users\franz\Downloads\SecureVotingSystem\backend\SecureVotingSystem\bin\Debug\net8.0\Npgsql.EntityFrameworkCore.PostgreSQL.dll

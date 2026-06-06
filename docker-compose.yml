@@ -1,8 +1,73 @@
 version: '3.8'
+
 services:
-  mailhog:
-    image: mailhog/mailhog
+
+  postgres:
+    image: postgres:15-alpine
     restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: securevoting
     ports:
-      - "1025:1025" # SMTP
-      - "8025:8025" # Web UI
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=securevoting;Username=postgres;Password=postgres
+
+      MailSettings__Host: smtp.gmail.com
+      MailSettings__Port: 587
+      MailSettings__EnableSsl: "true"
+      MailSettings__SenderEmail: ${GMAIL_USER}
+      MailSettings__Username: ${GMAIL_USER}
+      MailSettings__Password: ${GMAIL_APP_PASSWORD}
+
+    ports:
+      - "5000:5000"
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+jenkins:
+  image: jenkins/jenkins:lts
+  restart: unless-stopped
+  ports:
+    - "8080:8080"
+  volumes:
+    - jenkins-data:/var/jenkins_home
+    - /var/run/docker.sock:/var/run/docker.sock
+  user: root
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+
+volumes:
+  postgres-data:
+  jenkins-data:

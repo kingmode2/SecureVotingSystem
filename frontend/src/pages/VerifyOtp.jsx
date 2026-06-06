@@ -6,6 +6,7 @@ export default function VerifyOtp() {
   const loc = useLocation()
   const nav = useNavigate()
   const userId = loc.state?.userId
+  const otpFallback = loc.state?.otp
   const [code, setCode] = useState('')
   const [status, setStatus] = useState('')
   const [loading, setLoading] = useState(false)
@@ -44,7 +45,7 @@ export default function VerifyOtp() {
     try {
       if (!userId) throw new Error('Unable to identify user for OTP resend.')
       await axios.post('/auth/resend-otp', { userId })
-      setStatus('A new OTP has been sent to your email. Check MailHog at http://localhost:8025 for delivery.')
+      setStatus('A new OTP has been sent to your email. Check your inbox for the code.')
     } catch (err) {
       setStatus(err?.response?.data?.error || 'Resend OTP failed.')
     } finally {
@@ -62,6 +63,11 @@ export default function VerifyOtp() {
             {status && (
               <div className={`alert ${status.includes('success') ? 'alert-success' : 'alert-secondary'}`}>
                 {status}
+              </div>
+            )}
+            {otpFallback && (
+              <div className="alert alert-warning">
+                Registration completed. Your OTP for local/dev verification is <strong>{otpFallback}</strong>. Use it if email delivery does not arrive.
               </div>
             )}
             <form onSubmit={submit}>

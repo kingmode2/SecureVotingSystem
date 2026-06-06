@@ -29,10 +29,17 @@ namespace SecureVotingSystem.DTOs
         public int UserId { get; set; }
     }
 
+    public class VoteDto
+    {
+        public int ElectionId { get; set; }
+        public int CandidateId { get; set; }
+    }
+
     public class AuthResultDto
     {
         public string Token { get; set; } = string.Empty;
         public int UserId { get; set; }
         public string Role { get; set; } = string.Empty;
+        public string Otp { get; set; } = string.Empty;
     }
 }

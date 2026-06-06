@@ -2,12 +2,12 @@ import React, { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import axios from '../api/axios'
 
-const getEmailFromToken = (token) => {
+const getNameFromToken = (token) => {
   if (!token) return ''
   try {
     const payload = token.split('.')[1]
     const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')))
-    return decoded?.email || ''
+    return decoded?.name || decoded?.email || ''
   } catch {
     return ''
   }
@@ -18,13 +18,15 @@ export default function Navbar() {
   const [token, setToken] = useState(null)
   const [role, setRole] = useState('Voter')
   const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
 
   useEffect(() => {
-    const refreshAuthState = () => {
+      const refreshAuthState = () => {
       const updatedToken = localStorage.getItem('token')
       setToken(updatedToken)
       setRole(localStorage.getItem('role') || 'Voter')
-      setEmail(getEmailFromToken(updatedToken))
+        setName(getNameFromToken(updatedToken))
+        setEmail(getNameFromToken(updatedToken))
     }
 
     refreshAuthState()
@@ -50,6 +52,7 @@ export default function Navbar() {
     setToken(null)
     setRole('Voter')
     setEmail('')
+    setName('')
     nav('/login', { state: { message: 'Logout successful.' } })
   }
 
@@ -78,7 +81,11 @@ export default function Navbar() {
           <div className="d-flex align-items-center gap-2">
             {token ? (
               <>
-                {email && <span className="navbar-text me-2">Welcome, {email}</span>}
+                {name ? (
+                  <span className="navbar-text me-2">Welcome, {name}</span>
+                ) : (
+                  email && <span className="navbar-text me-2">Welcome, {email}</span>
+                )}
                 <span className="badge bg-secondary text-white">{role}</span>
                 <Link className="btn btn-outline-primary" to={role === 'Admin' ? '/admin' : '/voter'}>
                   Dashboard

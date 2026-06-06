@@ -18,12 +18,22 @@ export default function ElectionDetails() {
       .finally(() => setLoading(false))
   }, [id])
 
+  const getStatus = (election) => {
+    if (!election?.isActive) return 'Inactive'
+    const now = new Date()
+    const start = new Date(election.startDate)
+    const end = new Date(election.endDate)
+    if (now < start) return 'Upcoming'
+    if (now > end) return 'Closed'
+    return 'Active'
+  }
+
   const cast = async (candidateId) => {
     try {
-      await api.post('/votes', { electionId: parseInt(id), candidateId })
+      await api.post('/votes', { electionId: parseInt(id), candidateId: parseInt(candidateId) })
       alert('Vote cast successfully')
     } catch (err) {
-      alert(err?.response?.data?.error || 'Failed to cast vote')
+      alert(err?.response?.data?.error || err?.message || 'Failed to cast vote')
     }
   }
 
@@ -49,8 +59,10 @@ export default function ElectionDetails() {
             <h4 className="card-title">{election.title}</h4>
             <p className="text-muted">{election.description}</p>
             <p>
-              <strong>Status:</strong> {election.status || 'Active'}
+              <strong>Status:</strong> {getStatus(election)}
             </p>
+            <p className="mb-1"><strong>Starts:</strong> {new Date(election.startDate).toLocaleString()}</p>
+            <p><strong>Ends:</strong> {new Date(election.endDate).toLocaleString()}</p>
           </div>
         </div>
         <div className="row g-3">
@@ -60,7 +72,11 @@ export default function ElectionDetails() {
                 <div className="card-body d-flex flex-column">
                   <h5 className="card-title">{c.name}</h5>
                   <p className="card-text text-muted mb-4">Party: {c.party || 'Independent'}</p>
-                  <button className="btn btn-primary mt-auto" onClick={() => cast(c.id)}>
+                  <button
+                    className="btn btn-primary mt-auto"
+                    onClick={() => cast(c.id)}
+                    disabled={getStatus(election) !== 'Active'}
+                  >
                     Vote for {c.name}
                   </button>
                 </div>

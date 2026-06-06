@@ -5,6 +5,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom'
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
@@ -31,7 +32,16 @@ export default function Login() {
 
     try {
       const res = await axios.post('/auth/login', { email, password })
-      nav('/verify-otp', { state: { userId: res.data.userId } })
+      // If backend returned a token, store it and redirect to the appropriate dashboard
+      if (res.data?.token) {
+        localStorage.setItem('token', res.data.token)
+        localStorage.setItem('role', res.data.role)
+        localStorage.setItem('userId', String(res.data.userId))
+        nav(res.data.role === 'Admin' ? '/admin' : '/voter', { replace: true })
+      } else if (res.data?.userId) {
+        // Fallback: if backend returns a userId without token (unverified flow), go to verify page
+        nav('/verify-otp', { state: { userId: res.data.userId } })
+      }
     } catch (err) {
       const errorMsg = err?.response?.data?.error || 'Login failed'
       setError(errorMsg)
@@ -63,7 +73,24 @@ export default function Login() {
               </div>
               <div className="mb-3">
                 <label className="form-label">Password</label>
-                <input type="password" className="form-control" value={password} onChange={e => setPassword(e.target.value)} disabled={loading} />
+                <div className="input-group">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    className="form-control"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    disabled={loading}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    onClick={() => setShowPassword(prev => !prev)}
+                    disabled={loading}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
               </div>
               <button type="submit" className="btn btn-primary w-100" disabled={loading}>
                 {loading ? 'Logging in...' : 'Login'}

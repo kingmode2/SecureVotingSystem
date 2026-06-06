@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using SecureVotingSystem.Data;
 using SecureVotingSystem.DTOs;
@@ -16,14 +17,16 @@ namespace SecureVotingSystem.Services
     {
         private readonly ApplicationDbContext _db;
         private readonly IConfiguration _config;
+        private readonly IHostEnvironment _env;
         private readonly IAuthTaskQueue _taskQueue;
         private readonly IActivityLogService _activityLog;
         private const int BCRYPT_COST = 11; // Reduced from default 12 for better performance (still secure)
 
-        public AuthService(ApplicationDbContext db, IConfiguration config, IAuthTaskQueue taskQueue, IActivityLogService activityLog)
+        public AuthService(ApplicationDbContext db, IConfiguration config, IHostEnvironment env, IAuthTaskQueue taskQueue, IActivityLogService activityLog)
         {
             _db = db;
             _config = config;
+            _env = env;
             _taskQueue = taskQueue;
             _activityLog = activityLog;
         }
@@ -49,9 +52,21 @@ namespace SecureVotingSystem.Services
 
             _db.Users.Add(user);
             await _db.SaveChangesAsync();
+            
+            // Generate OTP for verification and queue email
+            var otp = GenerateOtpCode();
+            _ = _taskQueue.QueueOtpTaskAsync(user.Id, user.Email, otp);
+            await _activityLog.LogAsync(user.Id, "Register", "User registered; OTP queued for verification");
+            await _activityLog.LogAsync(user.Id, "OtpSent", $"OTP queued for {user.Email}");
 
-            // No OTP generation on registration. OTP is sent only when the user logs in.
-            return new AuthResultDto { UserId = user.Id, Token = string.Empty, Role = user.Role };
+            // Return user id so frontend can prompt verification; do NOT return token until verified
+            return new AuthResultDto
+            {
+                UserId = user.Id,
+                Token = string.Empty,
+                Role = user.Role,
+                Otp = _env.IsDevelopment() ? otp : string.Empty
+            };
         }
 
         private bool IsStrongPassword(string pwd)
@@ -76,29 +91,29 @@ namespace SecureVotingSystem.Services
             if (user == null)
             {
                 await _activityLog.LogAsync(null, "LoginFailed", $"Email: {dto.Email}");
-                throw new Exception("Invalid credentials");
+                throw new Exception("Invalid email or password.");
             }
             if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
             {
                 await _activityLog.LogAsync(user.Id, "LoginFailed", $"Email: {dto.Email}");
-                throw new Exception("Invalid credentials");
+                throw new Exception("Invalid email or password.");
             }
-
+            
             // Mark this login request as processed (within deduplication window)
             _taskQueue.MarkLoginRequestProcessed(dto.Email);
 
-            // Generate OTP
-            var otp = GenerateOtpCode();
+            // Block login until email verification completed
+            if (!user.IsVerified)
+            {
+                // Do NOT generate or send OTP during login. Require verification only at registration.
+                await _activityLog.LogAsync(user.Id, "LoginBlockedUnverified", "User attempted login but email not verified");
+                throw new Exception("Please verify your email before logging in.");
+            }
 
-            // Queue OTP generation and email sending - DON'T AWAIT!
-            // This allows the login endpoint to respond instantly
-            _ = _taskQueue.QueueOtpTaskAsync(user.Id, user.Email, otp);
-
-            // Log OTP send and login success sequentially to avoid DbContext concurrency issues
-            await _activityLog.LogAsync(user.Id, "LoginSuccess", "Credentials verified; OTP queued");
-            await _activityLog.LogAsync(user.Id, "OtpSent", $"OTP queued for {user.Email}");
-
-            return new AuthResultDto { UserId = user.Id, Token = string.Empty, Role = user.Role };
+            // User is verified - issue JWT
+            await _activityLog.LogAsync(user.Id, "LoginSuccess", "Credentials verified; user authenticated");
+            var token = GenerateJwtToken(await _db.Users.FindAsync(user.Id)!);
+            return new AuthResultDto { UserId = user.Id, Token = token, Role = user.Role };
             }
             catch (Exception ex)
             {
@@ -212,6 +227,7 @@ namespace SecureVotingSystem.Services
             var tokenHandler = new JwtSecurityTokenHandler();
             var claims = new[] {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user.FullName ?? string.Empty),
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim(ClaimTypes.Role, user.Role)
             };

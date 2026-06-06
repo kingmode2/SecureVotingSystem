@@ -1,10 +1,23 @@
 import React, {useEffect, useState} from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '../api/axios'
 
+const getRoleFromToken = (token) => {
+  if (!token) return ''
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+    return payload?.role || ''
+  } catch {
+    return ''
+  }
+}
+
 export default function AdminDashboard(){
+  const nav = useNavigate()
   const [elections, setElections] = useState([])
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const role = getRoleFromToken(localStorage.getItem('token'))
 
   const fetch = () => api.get('/elections').then(r=>setElections(r.data)).catch(()=>{})
   useEffect(()=>{ fetch() },[])
@@ -43,9 +56,29 @@ export default function AdminDashboard(){
     fetch()
   }
 
+  const logout = async () => {
+    try {
+      await api.post('/auth/logout')
+    } catch {
+      // ignore failures; clear locally anyway
+    }
+    localStorage.removeItem('token')
+    localStorage.removeItem('role')
+    localStorage.removeItem('userId')
+    nav('/login', { state: { message: 'Logout successful.' } })
+  }
+
   return (
     <div>
-      <h3>Admin Dashboard</h3>
+      <div className="d-flex align-items-center justify-content-between mb-4">
+        <div>
+          <h3>Admin Dashboard</h3>
+          <p className="mb-0">Welcome, {role === 'Admin' ? 'Admin' : 'User'}</p>
+        </div>
+        <button type="button" className="btn btn-outline-secondary" onClick={logout}>
+          Logout
+        </button>
+      </div>
       <div className="mb-4">
         <h5>Create Election</h5>
         <form onSubmit={create} className="row g-2">

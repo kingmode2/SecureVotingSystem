@@ -1,6 +1,27 @@
 import axios from 'axios'
 
-const base = (import.meta?.env?.VITE_API_BASE) || '/api'
+const resolveApiBase = () => {
+  const envBase = import.meta?.env?.VITE_API_BASE
+  if (envBase) return envBase
+
+  if (typeof window !== 'undefined') {
+    const { hostname, port, protocol } = window.location
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      if (port === '5173' || port === '5172' || port === '5174') {
+        return 'http://localhost:5000/api'
+      }
+    }
+
+    // In a static build served from Docker on localhost, use the host backend
+    if (hostname === 'host.docker.internal') {
+      return 'http://host.docker.internal:5000/api'
+    }
+  }
+
+  return '/api'
+}
+
+const base = resolveApiBase()
 const instance = axios.create({ baseURL: base })
 
 // Track pending requests to prevent duplicates

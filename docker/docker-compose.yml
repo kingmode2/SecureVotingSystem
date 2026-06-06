@@ -1,15 +1,22 @@
 version: '3.8'
 services:
-  mysql:
-    image: mysql:8.0
+  postgres:
+    image: postgres:15-alpine
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: YOUR_PASSWORD
-      MYSQL_DATABASE: SecureVotingDB
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: securevoting
     ports:
-      - "3306:3306"
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d securevoting"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     volumes:
-      - mysql-data:/var/lib/mysql
+      - postgres-data:/var/lib/postgresql/data
     networks:
       - securevoting_net
 
@@ -18,15 +25,16 @@ services:
       context: ../backend/SecureVotingSystem
       dockerfile: ../Dockerfile
     depends_on:
-      - mysql
-      - mailhog
+      - postgres
     environment:
-      - ConnectionStrings__DefaultConnection=server=mysql;port=3306;database=SecureVotingDB;user=root;password=YOUR_PASSWORD
-      - MailSettings__Host=mailhog
-      - MailSettings__Port=1025
-      - MailSettings__EnableSsl=false
-      - MailSettings__SenderEmail=no-reply@securevoting.local
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=securevoting;Username=postgres;Password=postgres
+      - MailSettings__Host=smtp.gmail.com
+      - MailSettings__Port=587
+      - MailSettings__EnableSsl=true
+      - MailSettings__SenderEmail=warblank21@gmail.com
       - MailSettings__SenderName="Secure Voting System"
+      - MailSettings__Username=warblank21@gmail.com
+      - MailSettings__Password=bpzogsllybtwxof
     ports:
       - "5000:5000"
     networks:
@@ -72,23 +80,35 @@ services:
       - "3000:3000"
     volumes:
       - grafana-data:/var/lib/grafana
+      - ../grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ../grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ../grafana/dashboards:/var/lib/grafana/dashboards:ro
     networks:
       - securevoting_net
 
-  mailhog:
-    image: mailhog/mailhog
+  pgadmin:
+    image: dpage/pgadmin4
     restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
     ports:
-      - "8025:8025" # Web UI
-      - "1025:1025" # SMTP
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
     networks:
       - securevoting_net
+
 
 volumes:
-  mysql-data:
+  postgres-data:
   jenkins-data:
   prometheus-data:
   grafana-data:
+  pgadmin-data:
 
 networks:
   securevoting_net:

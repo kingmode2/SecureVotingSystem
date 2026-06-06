@@ -1,0 +1,51 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "SecureVoting - API Metrics",
+    "panels": [
+      {
+        "type": "timeseries",
+        "title": "HTTP Requests (rate)",
+        "targets": [
+          {
+            "expr": "sum by (method, code) (rate(http_requests_total[1m]))",
+            "legendFormat": "{{method}} {{code}}",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "type": "timeseries",
+        "title": "Request Latency (P95)",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+            "legendFormat": "p95",
+            "refId": "B"
+          }
+        ]
+      },
+      {
+        "type": "stat",
+        "title": "Backend Up",
+        "targets": [
+          {
+            "expr": "up{job=\"aspnet\"}",
+            "refId": "C"
+          }
+        ]
+      },
+      {
+        "type": "timeseries",
+        "title": "Error Rate (5xx)",
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{code=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m]))",
+            "legendFormat": "5xx rate",
+            "refId": "D"
+          }
+        ]
+      }
+    ]
+  }
+}
