@@ -9,25 +9,8 @@ pipeline {
             }
         }
 
-        stage('Build Backend') {
-            steps {
-                sh '''
-                    cd backend/SecureVotingSystem
-                    dotnet restore
-                    dotnet build -c Release
-                '''
-            }
-        }
 
-        stage('Build Frontend') {
-            steps {
-                sh '''
-                    cd frontend
-                    npm ci
-                    npm run build
-                '''
-            }
-        }
+      
 
         stage('Docker Build') {
             steps {
