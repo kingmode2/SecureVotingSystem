@@ -1,20 +1,18 @@
-FROM node:20-alpine AS build
+FROM node:20 AS build
 
 WORKDIR /app
 
-ARG VITE_API_BASE
-ENV VITE_API_BASE=$VITE_API_BASE
-
 COPY package.json package-lock.json ./
-
 RUN npm ci
 
 COPY . .
 
+# IMPORTANT FIX: force executable vite
+RUN chmod +x node_modules/.bin/vite || true
+
 RUN npm run build
 
 FROM nginx:alpine
-
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
