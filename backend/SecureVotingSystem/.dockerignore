@@ -1,0 +1,6 @@
+bin
+obj
+build_temp
+temp_buildDebug
+*.log
+.vs
