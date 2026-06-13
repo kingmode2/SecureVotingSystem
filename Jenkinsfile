@@ -3,15 +3,11 @@ pipeline {
 
     stages {
 
-     
-
-      
-
         stage('Docker Build') {
             steps {
                 sh '''
                     cd docker
-                    docker compose build
+                    docker compose build --no-cache
                 '''
             }
         }
@@ -20,6 +16,7 @@ pipeline {
             steps {
                 sh '''
                     cd docker
+                    docker compose down || true
                     docker compose up -d
                 '''
             }

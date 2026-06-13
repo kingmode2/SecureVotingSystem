@@ -1,0 +1,17 @@
+FROM jenkins/jenkins:lts
+
+USER root
+
+RUN apt-get update && \
+    apt-get install -y \
+    docker.io \
+    curl \
+    ca-certificates
+
+# install docker compose plugin manually
+RUN mkdir -p /usr/lib/docker/cli-plugins && \
+    curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 \
+    -o /usr/lib/docker/cli-plugins/docker-compose && \
+    chmod +x /usr/lib/docker/cli-plugins/docker-compose
+
+USER jenkins

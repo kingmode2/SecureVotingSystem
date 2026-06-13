@@ -1,5 +1,7 @@
 version: '3.8'
+
 services:
+
   postgres:
     image: postgres:15-alpine
     restart: unless-stopped
@@ -32,9 +34,9 @@ services:
       - MailSettings__Port=587
       - MailSettings__EnableSsl=true
       - MailSettings__SenderEmail=warblank21@gmail.com
-      - MailSettings__SenderName="Secure Voting System"
+      - MailSettings__SenderName=Secure Voting System
       - MailSettings__Username=warblank21@gmail.com
-      - MailSettings__Password=bpzogsllybtwxof
+      - MailSettings__Password=ukvdhnwzpersorna
     ports:
       - "5000:5000"
     networks:
@@ -53,12 +55,18 @@ services:
       - securevoting_net
 
   jenkins:
-    image: jenkins/jenkins:lts
+    build:
+      context: .
+      dockerfile: Dockerfile.jenkins
     restart: unless-stopped
+    user: root
+    privileged: true
     ports:
       - "8080:8080"
+      - "50000:50000"
     volumes:
       - jenkins-data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - securevoting_net
 
@@ -101,7 +109,6 @@ services:
       - pgadmin-data:/var/lib/pgadmin
     networks:
       - securevoting_net
-
 
 volumes:
   postgres-data:
