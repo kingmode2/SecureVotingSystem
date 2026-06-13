@@ -4,23 +4,13 @@ pipeline {
     stages {
 
         stage('Docker Build') {
-            steps {
-                sh '''
-                    cd docker
-                    docker compose build
-                '''
-            }
-        }
-
-        stage('Deploy') {
-            steps {
-                sh '''
-                    cd docker
-                    docker compose down || true
-                    docker compose up -d
-                '''
-            }
-        }
+    steps {
+        sh '''
+            cd docker
+            docker compose up -d --build
+        '''
+    }
+}
 
         stage('Health Check') {
             steps {
