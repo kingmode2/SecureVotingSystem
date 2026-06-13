@@ -7,7 +7,7 @@ pipeline {
             steps {
                 sh '''
                     cd docker
-                    docker compose build --no-cache
+                    docker compose build
                 '''
             }
         }
