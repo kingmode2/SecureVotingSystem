@@ -3,19 +3,17 @@ pipeline {
 
     stages {
 
-        stage('Deploy Containers (Fast)') {
-            steps {
-                sh '''
-                    echo "Starting deployment..."
+       stage('Deploy Containers (Clean Start)') {
+    steps {
+        sh '''
+            cd docker
 
-                    # Go to correct folder safely
-                    cd docker
+            docker compose down --remove-orphans || true
 
-                    # Pull + start only needed services (faster)
-                    docker compose up -d backend frontend postgres pgadmin prometheus grafana
-                '''
-            }
-        }
+            docker compose up -d backend frontend postgres pgadmin prometheus grafana
+        '''
+    }
+}
 
         stage('Wait for Backend') {
             steps {
