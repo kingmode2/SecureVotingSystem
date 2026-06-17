@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
 
   postgres:
@@ -25,18 +23,11 @@ services:
   backend:
     build:
       context: ../backend/SecureVotingSystem
-      dockerfile: ../Dockerfile
+      dockerfile: Dockerfile
     depends_on:
       - postgres
     environment:
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=securevoting;Username=postgres;Password=postgres
-      - MailSettings__Host=smtp.gmail.com
-      - MailSettings__Port=587
-      - MailSettings__EnableSsl=true
-      - MailSettings__SenderEmail=warblank21@gmail.com
-      - MailSettings__SenderName=Secure Voting System
-      - MailSettings__Username=warblank21@gmail.com
-      - MailSettings__Password=ukvdhnwzpersorna
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=securevoting;Username=postgres;Password=postgres
     ports:
       - "5000:5000"
     networks:
@@ -67,6 +58,8 @@ services:
     volumes:
       - jenkins-data:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      DOCKER_HOST: unix:///var/run/docker.sock
     networks:
       - securevoting_net
 
