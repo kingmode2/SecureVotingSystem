@@ -3,29 +3,36 @@ pipeline {
 
     stages {
 
-       stage('Deploy Containers (Clean Start)') {
-    steps {
-        sh '''
-            cd docker
+        stage('Deploy Containers (Clean Start)') {
+            steps {
+                sh '''
+                    cd docker
 
-            docker compose down --remove-orphans || true
-
-            docker compose up -d backend frontend postgres pgadmin prometheus grafana
-        '''
-    }
-}
+                    # ONLY restart app services (NOT whole infra)
+                    docker compose up -d backend frontend postgres pgadmin prometheus grafana
+                '''
+            }
+        }
 
         stage('Wait for Backend') {
             steps {
                 sh '''
                     echo "Waiting for backend..."
 
-                    # IMPORTANT: backend is inside docker network, not localhost
-                    for i in {1..30}; do
-                        if docker exec $(docker ps -qf name=backend) curl -f http://localhost:5000/metrics; then
+                    # safer container detection
+                    CONTAINER=$(docker ps -qf "name=backend")
+
+                    if [ -z "$CONTAINER" ]; then
+                        echo "Backend container not found ❌"
+                        exit 1
+                    fi
+
+                    for i in $(seq 1 30); do
+                        if docker exec $CONTAINER curl -f http://localhost:5000/metrics; then
                             echo "Backend is ready ✔"
                             exit 0
                         fi
+
                         echo "Waiting..."
                         sleep 2
                     done
@@ -41,7 +48,14 @@ pipeline {
                 sh '''
                     echo "Running final health check..."
 
-                    docker exec $(docker ps -qf name=backend) curl -f http://localhost:5000/metrics
+                    CONTAINER=$(docker ps -qf "name=backend")
+
+                    if [ -z "$CONTAINER" ]; then
+                        echo "Backend container not found ❌"
+                        exit 1
+                    fi
+
+                    docker exec $CONTAINER curl -f http://localhost:5000/metrics
                 '''
             }
         }
