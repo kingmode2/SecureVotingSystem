@@ -1,80 +1,30 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
-using System.Security.Cryptography;
 using System.Text;
 using SecureVotingSystem.Data;
 using SecureVotingSystem.Services;
 using Prometheus;
 
 var builder = WebApplication.CreateBuilder(args);
-var configuration = builder.Configuration;
 
 // =========================
-// DATABASE
+// DATABASE (CLEAN + FIXED)
 // =========================
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    var connectionStrings = new[]
-    {
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        Environment.GetEnvironmentVariable("POSTGRES_CONNECTION_STRING"),
-        Environment.GetEnvironmentVariable("SQLSERVER_CONNECTION_STRING"),
-        "Host=postgres;Port=5432;Database=securevoting;Username=postgres;Password=postgres",
-        "Server=localhost\\SQLEXPRESS;Database=SecureVotingDB;Trusted_Connection=True;TrustServerCertificate=True;"
-    }
-    .Where(cs => !string.IsNullOrWhiteSpace(cs))
-    .ToArray();
+    var connectionString =
+        builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? Environment.GetEnvironmentVariable("POSTGRES_CONNECTION_STRING")
+        ?? "Host=postgres;Port=5432;Database=securevoting;Username=postgres;Password=postgres";
 
-    string? selectedConnection = null;
-    bool isPostgres = false;
-
-    foreach (var cs in connectionStrings)
-    {
-        try
-        {
-            try
-            {
-                using var pg = new Npgsql.NpgsqlConnection(cs);
-                pg.Open();
-                selectedConnection = cs;
-                isPostgres = true;
-                break;
-            }
-            catch { }
-
-            try
-            {
-                using var sql = new Microsoft.Data.SqlClient.SqlConnection(cs);
-                sql.Open();
-                selectedConnection = cs;
-                isPostgres = false;
-                break;
-            }
-            catch { }
-        }
-        catch { }
-    }
-
-    if (selectedConnection is null)
-    {
-        options.UseSqlite("Data Source=SecureVoting.db");
-    }
-    else if (isPostgres)
-    {
-        options.UseNpgsql(selectedConnection);
-    }
-    else
-    {
-        options.UseSqlServer(selectedConnection);
-    }
+    options.UseNpgsql(connectionString);
 });
 
 // =========================
 // JWT
 // =========================
-var jwt = configuration.GetSection("Jwt");
+var jwt = builder.Configuration.GetSection("Jwt");
 var key = Encoding.UTF8.GetBytes(jwt["Key"]!);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -103,8 +53,10 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowLocalhost", p =>
-        p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
+    options.AddPolicy("AllowAll",
+        p => p.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod());
 });
 
 builder.Services.AddMemoryCache();
@@ -130,33 +82,52 @@ app.UseSwaggerUI();
 
 app.UseRouting();
 
-app.UseCors("AllowLocalhost");
+app.UseCors("AllowAll");
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapMetrics();
 app.MapControllers();
+app.MapMetrics();
 
 // =========================
-// SEED DATABASE (BEFORE RUN)
+// DATABASE MIGRATION (FIXED + RETRY)
 // =========================
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-    try
+    Console.WriteLine("Waiting for PostgreSQL to be ready...");
+
+    var retries = 15;
+
+    while (retries > 0)
     {
-        db.Database.Migrate();
-        SeedData.EnsureSeedData(db);
+        try
+        {
+            Console.WriteLine("Applying migrations...");
+
+            db.Database.Migrate();
+            SeedData.EnsureSeedData(db);
+
+            Console.WriteLine("Database is ready ✔");
+            break;
+        }
+        catch (Exception ex)
+        {
+            retries--;
+
+            Console.WriteLine($"DB not ready yet. Retries left: {retries}");
+            Console.WriteLine(ex.Message);
+
+            Thread.Sleep(4000);
+        }
     }
-    catch (Exception ex)
+
+    if (retries == 0)
     {
-        Console.WriteLine($"DB init error: {ex}");
+        Console.WriteLine("❌ Could not connect to database after multiple retries.");
     }
 }
 
-// =========================
-// START APP
-// =========================
 app.Run();

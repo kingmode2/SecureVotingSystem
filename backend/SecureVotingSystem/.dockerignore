@@ -1,6 +1,41 @@
-bin
-obj
-build_temp
-temp_buildDebug
-*.log
+# Git
+.git
+**/.git
+
+# .NET build files
+**/bin
+**/obj
+
+# Node.js
+**/node_modules
+**/dist
+
+# Visual Studio
 .vs
+**/.vs
+
+# Logs
+*.log
+**/*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker files (avoid copying build config into context)
+Dockerfile
+docker-compose.yml
+
+# Jenkins / CI files
+Jenkinsfile
+
+# IDE / editor files
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
