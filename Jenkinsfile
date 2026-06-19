@@ -43,18 +43,50 @@ pipeline {
         }
     }
 
-    // ✅ FIX: post must be OUTSIDE stages
     post {
         success {
-            mail to: 'warblank21@gmail.com',
-            subject: "SUCCESS: ${env.JOB_NAME}",
-            body: "Build succeeded!"
+            emailext(
+                to: 'warblank21@gmail.com',
+                subject: "SUCCESS: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
+                body: """
+✔ BUILD SUCCESS
+
+Project: ${env.JOB_NAME}
+Build Number: ${env.BUILD_NUMBER}
+
+STAGES:
+✔ Deploy Containers
+✔ Wait for Backend
+✔ Health Check Backend
+
+Backend Status: RUNNING ✔
+Metrics: OK ✔
+
+Jenkins URL:
+${env.BUILD_URL}
+                """
+            )
         }
 
         failure {
-            mail to: 'warblank21@gmail.com',
-            subject: "FAILED: ${env.JOB_NAME}",
-            body: "Check Jenkins console output"
+            emailext(
+                to: 'warblank21@gmail.com',
+                subject: "FAILED: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
+                body: """
+❌ BUILD FAILED
+
+Project: ${env.JOB_NAME}
+Build Number: ${env.BUILD_NUMBER}
+
+Check which stage failed in Jenkins:
+- Deploy Containers
+- Wait for Backend
+- Health Check Backend
+
+Jenkins URL:
+${env.BUILD_URL}
+                """
+            )
         }
     }
 }
