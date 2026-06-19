@@ -57,10 +57,13 @@ services:
       - securevoting_net
 
   prometheus:
-    image: prom/prometheus
-    restart: unless-stopped
-    volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+  image: prom/prometheus
+  restart: unless-stopped
+  volumes:
+    - type: bind
+      source: /var/jenkins_home/workspace/SecureVoting/docker/prometheus/prometheus.yml
+      target: /etc/prometheus/prometheus.yml
+      read_only: true
     ports:
       - "9090:9090"
     networks:
