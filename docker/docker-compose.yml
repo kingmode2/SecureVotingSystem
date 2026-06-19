@@ -29,6 +29,7 @@ services:
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=securevoting;Username=postgres;Password=postgres
     ports:
       - "5000:5000"
+    restart: unless-stopped
     networks:
       - securevoting_net
 
@@ -37,6 +38,7 @@ services:
       context: ../frontend
     ports:
       - "5173:80"
+    restart: unless-stopped
     networks:
       - securevoting_net
 
@@ -57,17 +59,17 @@ services:
       - securevoting_net
 
   prometheus:
-  image: prom/prometheus
-  restart: unless-stopped
-  volumes:
-    - type: bind
-      source: /var/jenkins_home/workspace/SecureVoting/docker/prometheus/prometheus.yml
-      target: /etc/prometheus/prometheus.yml
-      read_only: true
-  ports:
-    - "9090:9090"
-  networks:
-    - securevoting_net
+    image: prom/prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - type: bind
+        source: ${PWD}/prometheus/prometheus.yml
+        target: /etc/prometheus/prometheus.yml
+        read_only: true
+    networks:
+      - securevoting_net
 
   grafana:
     image: grafana/grafana
@@ -95,10 +97,10 @@ services:
       - securevoting_net
 
 volumes:
-  postgres-data:
-  jenkins-data:
-  grafana-data:
-  pgadmin-data:
+  postgres-data: {}
+  jenkins-data: {}
+  grafana-data: {}
+  pgadmin-data: {}
 
 networks:
   securevoting_net:
