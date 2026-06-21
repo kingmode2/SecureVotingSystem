@@ -7,8 +7,8 @@ pipeline {
             steps {
                 sh '''
                     cd docker
-                    echo "Starting core services (backend, frontend, postgres, pgadmin, prometheus, grafana)..."
-                    docker compose up -d backend frontend postgres pgadmin prometheus grafana
+                    echo "Starting core services (backend, frontend, postgres, pgadmin, grafana)..."
+                    docker compose up -d backend frontend postgres pgadmin grafana
 
                     echo "Waiting for backend to be healthy before starting Jenkins..."
                     for i in $(seq 1 30); do
@@ -63,10 +63,6 @@ pipeline {
                     docker exec docker-postgres-1 pg_isready -U postgres || echo "Postgres FAIL ❌"
 
                     echo ""
-                    echo "Prometheus Check:"
-                    docker exec docker-prometheus-1 wget -qO- http://localhost:9090/-/ready || echo "Prometheus FAIL ❌"
-
-                    echo ""
                     echo "Grafana Check:"
                     curl -f http://localhost:3000/api/health || echo "Grafana FAIL ❌"
                 '''
@@ -96,7 +92,6 @@ URL: ${env.BUILD_URL}
 SERVICE STATUS:
 - Backend: OK
 - Postgres: OK
-- Prometheus: OK
 - Grafana: OK
 - Jenkins: OK
 """
@@ -114,7 +109,6 @@ URL: ${env.BUILD_URL}
 Check services:
 - Backend
 - Postgres
-- Prometheus
 - Grafana
 - Jenkins
 
