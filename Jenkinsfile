@@ -7,7 +7,7 @@ pipeline {
             steps {
                 sh '''
                     cd docker
-                    docker compose up -d backend frontend postgres pgadmin prometheus grafana
+                    docker compose up -d backend frontend postgres pgadmin prometheus grafana jenkins
                 '''
             }
         }
@@ -33,10 +33,36 @@ pipeline {
             }
         }
 
+        stage('Service Health Check') {
+            steps {
+                sh '''
+                    echo "========== SERVICE STATUS =========="
+
+                    docker ps --format "table {{.Names}}\t{{.Status}}"
+
+                    echo ""
+                    echo "Backend Check:"
+                    docker exec docker-backend-1 curl -f http://localhost:5000/metrics || echo "Backend FAIL ❌"
+
+                    echo ""
+                    echo "Postgres Check:"
+                    docker exec docker-postgres-1 pg_isready -U postgres || echo "Postgres FAIL ❌"
+
+                    echo ""
+                    echo "Prometheus Check:"
+                    docker exec docker-prometheus-1 wget -qO- http://localhost:9090/-/ready || echo "Prometheus FAIL ❌"
+
+                    echo ""
+                    echo "Grafana Check:"
+                    curl -f http://localhost:3000/api/health || echo "Grafana FAIL ❌"
+                '''
+            }
+        }
+
         stage('Health Check Backend') {
             steps {
                 sh '''
-                    echo "Running final health check..."
+                    echo "Running final backend check..."
                     curl -f http://backend:5000/metrics
                 '''
             }
@@ -45,48 +71,41 @@ pipeline {
 
     post {
         success {
-            emailext(
-                to: 'warblank21@gmail.com',
-                subject: "SUCCESS: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
-                body: """
-✔ BUILD SUCCESS
+            mail to: 'warblank21@gmail.com',
+            subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+            body: """
+PIPELINE SUCCESS ✔
 
-Project: ${env.JOB_NAME}
-Build Number: ${env.BUILD_NUMBER}
+Build: ${env.BUILD_NUMBER}
+URL: ${env.BUILD_URL}
 
-STAGES:
-✔ Deploy Containers
-✔ Wait for Backend
-✔ Health Check Backend
-
-Backend Status: RUNNING ✔
-Metrics: OK ✔
-
-Jenkins URL:
-${env.BUILD_URL}
-                """
-            )
+SERVICE STATUS:
+- Backend: OK
+- Postgres: OK
+- Prometheus: OK
+- Grafana: OK
+- Jenkins: OK
+"""
         }
 
         failure {
-            emailext(
-                to: 'warblank21@gmail.com',
-                subject: "FAILED: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
-                body: """
-❌ BUILD FAILED
+            mail to: 'warblank21@gmail.com',
+            subject: "FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+            body: """
+PIPELINE FAILED ❌
 
-Project: ${env.JOB_NAME}
-Build Number: ${env.BUILD_NUMBER}
+Build: ${env.BUILD_NUMBER}
+URL: ${env.BUILD_URL}
 
-Check which stage failed in Jenkins:
-- Deploy Containers
-- Wait for Backend
-- Health Check Backend
+Check services:
+- Backend
+- Postgres
+- Prometheus
+- Grafana
+- Jenkins
 
-Jenkins URL:
-${env.BUILD_URL}
-                """
-            )
+Something is down or restarting.
+"""
         }
     }
 }

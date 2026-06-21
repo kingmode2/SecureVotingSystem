@@ -81,6 +81,7 @@ app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseRouting();
+app.UseHttpMetrics();
 
 app.UseCors("AllowAll");
 
