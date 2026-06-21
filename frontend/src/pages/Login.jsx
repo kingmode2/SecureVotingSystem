@@ -21,34 +21,34 @@ export default function Login() {
   }, [nav])
 
   const submit = async (e) => {
-    e.preventDefault()
-    if (loading) return
+  e.preventDefault()
+  if (loading) return
 
-    setError('')
-    localStorage.removeItem('token')
-    localStorage.removeItem('role')
-    localStorage.removeItem('userId')
-    setLoading(true)
+  setError('')
+  localStorage.removeItem('token')
+  localStorage.removeItem('role')
+  localStorage.removeItem('userId')
+  setLoading(true)
 
-    try {
-      const res = await axios.post('/auth/login', { email, password })
-      // If backend returned a token, store it and redirect to the appropriate dashboard
-      if (res.data?.token) {
-        localStorage.setItem('token', res.data.token)
-        localStorage.setItem('role', res.data.role)
-        localStorage.setItem('userId', String(res.data.userId))
-        nav(res.data.role === 'Admin' ? '/admin' : '/voter', { replace: true })
-      } else if (res.data?.userId) {
-        // Fallback: if backend returns a userId without token (unverified flow), go to verify page
-        nav('/verify-otp', { state: { userId: res.data.userId } })
-      }
-    } catch (err) {
-      const errorMsg = err?.response?.data?.error || 'Login failed'
-      setError(errorMsg)
-    } finally {
-      setLoading(false)
+  try {
+    // FIX: Changed '/auth/login' to '/Auth/login'
+    const res = await axios.post('/Auth/login', { email, password })
+    
+    if (res.data?.token) {
+      localStorage.setItem('token', res.data.token)
+      localStorage.setItem('role', res.data.role)
+      localStorage.setItem('userId', String(res.data.userId))
+      nav(res.data.role === 'Admin' ? '/admin' : '/voter', { replace: true })
+    } else if (res.data?.userId) {
+      nav('/verify-otp', { state: { userId: res.data.userId } })
     }
+  } catch (err) {
+    const errorMsg = err?.response?.data?.error || 'Login failed'
+    setError(errorMsg)
+  } finally {
+    setLoading(false)
   }
+}
 
   useEffect(() => {
     if (location.state?.message) {
