@@ -21,34 +21,42 @@ export default function Login() {
   }, [nav])
 
   const submit = async (e) => {
-  e.preventDefault()
-  if (loading) return
+    e.preventDefault()
+    if (loading) return
 
-  setError('')
-  localStorage.removeItem('token')
-  localStorage.removeItem('role')
-  localStorage.removeItem('userId')
-  setLoading(true)
+    setError('')
+    localStorage.removeItem('token')
+    localStorage.removeItem('role')
+    localStorage.removeItem('userId')
+    setLoading(true)
 
-  try {
-    // FIX: Changed '/auth/login' to '/Auth/login'
-    const res = await axios.post('/Auth/login', { email, password })
-    
-    if (res.data?.token) {
-      localStorage.setItem('token', res.data.token)
-      localStorage.setItem('role', res.data.role)
-      localStorage.setItem('userId', String(res.data.userId))
-      nav(res.data.role === 'Admin' ? '/admin' : '/voter', { replace: true })
-    } else if (res.data?.userId) {
-      nav('/verify-otp', { state: { userId: res.data.userId } })
+    try {
+      const res = await axios.post('/Auth/login', { email, password })
+      console.log('✅ Login response:', res.data) // Debug
+
+      if (res.data?.token) {
+        localStorage.setItem('token', res.data.token)
+        localStorage.setItem('role', res.data.role)
+        localStorage.setItem('userId', String(res.data.userId))
+
+        const redirectPath = res.data.role === 'Admin' ? '/admin' : '/voter'
+        console.log(`🔄 Redirecting to ${redirectPath}`) // Debug
+
+        // ✅ FIX: Force a full page reload so ProtectedRoute picks up the token
+        window.location.href = redirectPath
+      } else if (res.data?.userId) {
+        nav('/verify-otp', { state: { userId: res.data.userId } })
+      } else {
+        setError('Login succeeded but no token received.')
+      }
+    } catch (err) {
+      console.error('❌ Login error:', err) // Debug
+      const errorMsg = err?.response?.data?.error || 'Login failed'
+      setError(errorMsg)
+    } finally {
+      setLoading(false)
     }
-  } catch (err) {
-    const errorMsg = err?.response?.data?.error || 'Login failed'
-    setError(errorMsg)
-  } finally {
-    setLoading(false)
   }
-}
 
   useEffect(() => {
     if (location.state?.message) {

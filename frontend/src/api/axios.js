@@ -1,27 +1,39 @@
 import axios from 'axios'
 
 const resolveApiBase = () => {
+  // 1. Use environment variable if set (Render)
   const envBase = import.meta?.env?.VITE_API_BASE
-  if (envBase) return envBase
+  if (envBase) {
+    // ✅ FIX: Ensure the base URL includes /api
+    // If it ends with /api, use it as-is; otherwise add /api
+    if (envBase.endsWith('/api')) {
+      return envBase
+    }
+    return `${envBase}/api`
+  }
 
+  // 2. Local development
   if (typeof window !== 'undefined') {
-    const { hostname, port, protocol } = window.location
+    const { hostname, port } = window.location
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       if (port === '5173' || port === '5172' || port === '5174') {
         return 'http://localhost:5000/api'
       }
     }
 
-    // In a static build served from Docker on localhost, use the host backend
+    // Docker local
     if (hostname === 'host.docker.internal') {
       return 'http://host.docker.internal:5000/api'
     }
   }
 
+  // 3. Fallback – relative path
   return '/api'
 }
 
 const base = resolveApiBase()
+console.log('✅ Axios base URL:', base) // ← Helpful for debugging
+
 const instance = axios.create({ baseURL: base })
 
 // Track pending requests to prevent duplicates
