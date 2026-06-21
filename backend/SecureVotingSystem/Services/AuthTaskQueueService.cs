@@ -25,7 +25,7 @@ namespace SecureVotingSystem.Services
         private readonly IMemoryCache _memoryCache;
         private readonly ILogger<AuthTaskQueueService> _logger;
         private const string DUPLICATE_REQUEST_KEY = "login_request_{0}";
-        private const int DUPLICATE_REQUEST_WINDOW_SECONDS = 2; // Prevent duplicates within 2 seconds
+        private const int DUPLICATE_REQUEST_WINDOW_SECONDS = 2;
 
         public AuthTaskQueueService(IServiceProvider serviceProvider, IMemoryCache memoryCache, ILogger<AuthTaskQueueService> logger)
         {
@@ -58,50 +58,55 @@ namespace SecureVotingSystem.Services
         public ValueTask QueueOtpTaskAsync(int userId, string email, string otp)
         {
             var item = new OtpTaskItem { UserId = userId, Email = email, Otp = otp };
+            _logger.LogInformation("📧 OTP task queued for {Email}", email);
             if (_channel.Writer.TryWrite(item))
             {
                 return ValueTask.CompletedTask;
             }
-
             return _channel.Writer.WriteAsync(item);
         }
 
         public ValueTask QueueResendOtpTaskAsync(int userId, string email, string otp)
         {
-            // Resend is the same as initial send - just queue it
             var item = new OtpTaskItem { UserId = userId, Email = email, Otp = otp };
+            _logger.LogInformation("📧 OTP resend task queued for {Email}", email);
             if (_channel.Writer.TryWrite(item))
             {
                 return ValueTask.CompletedTask;
             }
-
             return _channel.Writer.WriteAsync(item);
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            _logger.LogInformation("🚀 AuthTaskQueueService started.");
             await foreach (var item in _channel.Reader.ReadAllAsync(stoppingToken))
             {
+                _logger.LogInformation("📨 Dequeued OTP task for {Email}", item.Email);
                 try
                 {
                     await ProcessOtpTaskAsync(item, stoppingToken);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error processing OTP task for {Email}", item.Email);
+                    _logger.LogError(ex, "❌ Error processing OTP task for {Email}", item.Email);
                 }
             }
+            _logger.LogInformation("🛑 AuthTaskQueueService stopped.");
         }
 
         private async Task ProcessOtpTaskAsync(OtpTaskItem item, CancellationToken cancellationToken)
         {
+            _logger.LogInformation("📧 Processing OTP task for {Email}", item.Email);
+
             using var scope = _serviceProvider.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
 
             try
             {
-                // Mark all previous unused OTPs as used in a single update, then enqueue the new OTP
+                // Mark all previous unused OTPs as used
+                _logger.LogInformation("🔄 Marking previous OTPs as used for user {UserId}", item.UserId);
                 await db.OtpCodes
                     .Where(o => o.UserId == item.UserId && !o.IsUsed)
                     .ExecuteUpdateAsync(o => o.SetProperty(otp => otp.IsUsed, true), cancellationToken);
@@ -116,15 +121,18 @@ namespace SecureVotingSystem.Services
 
                 db.OtpCodes.Add(otpEntry);
                 await db.SaveChangesAsync(cancellationToken);
+                _logger.LogInformation("✅ OTP saved in database for {Email}", item.Email);
 
-                // Send OTP email asynchronously without blocking the request pipeline
+                // Send email
+                _logger.LogInformation("📧 Attempting to send OTP email to {Email}...", item.Email);
                 var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
                 await emailService.SendOtpEmailAsync(item.Email, item.Otp, cancellationToken);
+                _logger.LogInformation("✅ OTP email successfully sent to {Email}", item.Email);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to process OTP task for {Email}", item.Email);
-                throw;
+                _logger.LogError(ex, "❌ Failed to send OTP email to {Email}", item.Email);
+                throw; // rethrow so outer catch logs it
             }
         }
     }
