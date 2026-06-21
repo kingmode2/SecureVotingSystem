@@ -59,18 +59,17 @@ services:
     networks:
       - securevoting_net
 
-      prometheus:
-    image: prom/prometheus
-    restart: unless-stopped
-    ports:
+    prometheus:
+      image: prom/prometheus
+      restart: unless-stopped
+      ports:
       - "9090:9090"
-    volumes:
+      volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    command:
+      command:
       - "--config.file=/etc/prometheus/prometheus.yml"
-    networks:
+      networks:
       - securevoting_net
-  #     - securevoting_net
 
   grafana:
     image: grafana/grafana
