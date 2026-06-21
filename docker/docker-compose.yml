@@ -59,7 +59,7 @@ services:
     networks:
       - securevoting_net
 
-  # ✅ Prometheus – now correctly a SIBLING of jenkins
+  # ✅ Prometheus – now a SIBLING (same level as jenkins)
   prometheus:
     build:
       context: ./prometheus
