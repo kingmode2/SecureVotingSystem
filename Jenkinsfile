@@ -7,7 +7,21 @@ pipeline {
             steps {
                 sh '''
                     cd docker
-                    docker compose up -d backend frontend postgres pgadmin prometheus grafana jenkins
+                    echo "Starting core services (backend, frontend, postgres, pgadmin, prometheus, grafana)..."
+                    docker compose up -d backend frontend postgres pgadmin prometheus grafana
+
+                    echo "Waiting for backend to be healthy before starting Jenkins..."
+                    for i in $(seq 1 30); do
+                        if curl -f http://backend:5000/metrics >/dev/null 2>&1; then
+                            echo "Backend is ready ✔"
+                            break
+                        fi
+                        echo "Waiting for backend... ($i/30)"
+                        sleep 2
+                    done
+
+                    echo "Starting Jenkins now..."
+                    docker compose up -d jenkins
                 '''
             }
         }
