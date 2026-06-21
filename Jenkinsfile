@@ -10,7 +10,7 @@ pipeline {
                     echo "Starting core services (backend, frontend, postgres, pgadmin, grafana)..."
                     docker compose up -d backend frontend postgres pgadmin grafana
 
-                    echo "Waiting for backend to be healthy before starting Jenkins..."
+                    echo "Waiting for backend to be healthy..."
                     for i in $(seq 1 30); do
                         if curl -f http://backend:5000/metrics >/dev/null 2>&1; then
                             echo "Backend is ready ✔"
@@ -19,9 +19,6 @@ pipeline {
                         echo "Waiting for backend... ($i/30)"
                         sleep 2
                     done
-
-                    echo "Starting Jenkins now..."
-                    docker compose up -d jenkins
                 '''
             }
         }
@@ -93,7 +90,7 @@ SERVICE STATUS:
 - Backend: OK
 - Postgres: OK
 - Grafana: OK
-- Jenkins: OK
+- Jenkins: OK (not restarted)
 """
         }
 
@@ -110,7 +107,6 @@ Check services:
 - Backend
 - Postgres
 - Grafana
-- Jenkins
 
 Something is down or restarting.
 """
