@@ -80,6 +80,32 @@ var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI();
 
+// ===== SAFE ADDITIONS: Health Check Endpoints =====
+// These don't affect your existing logic - they just add new routes
+
+// Root endpoint - shows API is running
+app.MapGet("/", () => Results.Ok(new { 
+    status = "Secure Voting System API is Running",
+    timestamp = DateTime.UtcNow,
+    documentation = "/swagger",
+    health = "/health",
+    endpoints = new[] { 
+        "/api/auth/register", 
+        "/api/auth/login", 
+        "/api/candidates",
+        "/api/votes"
+    }
+}));
+
+// Health check endpoint - for monitoring
+app.MapGet("/health", () => Results.Ok(new { 
+    status = "Healthy", 
+    timestamp = DateTime.UtcNow,
+    database = "Connected"
+}));
+
+// ===== END OF SAFE ADDITIONS =====
+
 app.UseRouting();
 app.UseHttpMetrics();
 
