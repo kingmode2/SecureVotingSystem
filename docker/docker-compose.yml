@@ -25,7 +25,7 @@ services:
       dockerfile: Dockerfile
     depends_on:
       postgres:
-        condition: service_healthy   # ← Wait for Postgres to be ready
+        condition: service_healthy
     environment:
       - POSTGRES_CONNECTION_STRING=Host=postgres;Port=5432;Database=securevoting;Username=postgres;Password=postgres;SSL Mode=Disable
     ports:
