@@ -15,6 +15,20 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: false
-  }
+    sourcemap: false,
+    // This ensures _redirects is copied
+    rollupOptions: {
+      output: {
+        assetFileNames: (assetInfo) => {
+          // Keep _redirects as-is, not hashed
+          if (assetInfo.name === '_redirects') {
+            return '_redirects'
+          }
+          return 'assets/[name]-[hash][extname]'
+        }
+      }
+    }
+  },
+  // Explicitly set public directory
+  publicDir: 'public'
 })
