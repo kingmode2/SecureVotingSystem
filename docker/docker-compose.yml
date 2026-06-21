@@ -59,14 +59,14 @@ services:
     networks:
       - securevoting_net
 
-  # ✅ Prometheus – moved OUT of jenkins (same level as other services)
+  # ✅ Prometheus – now correctly a SIBLING of jenkins
   prometheus:
-    image: prom/prometheus
+    build:
+      context: ./prometheus
+      dockerfile: Dockerfile
     restart: unless-stopped
     ports:
       - "9090:9090"
-    volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
     networks:
