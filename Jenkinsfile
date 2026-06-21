@@ -19,9 +19,6 @@ pipeline {
                         echo "Waiting for backend... ($i/30)"
                         sleep 2
                     done
-
-                    echo "Starting Jenkins now..."
-                    docker compose up -d jenkins
                 '''
             }
         }
@@ -98,7 +95,7 @@ SERVICE STATUS:
 - Postgres: OK
 - Prometheus: OK
 - Grafana: OK
-- Jenkins: OK
+- Jenkins: OK (not touched)
 """
         }
 
@@ -116,7 +113,6 @@ Check services:
 - Postgres
 - Prometheus
 - Grafana
-- Jenkins
 
 Something is down or restarting.
 """
