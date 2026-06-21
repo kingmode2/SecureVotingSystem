@@ -21,43 +21,45 @@ export default function Login() {
   }, [nav])
 
   const submit = async (e) => {
-    e.preventDefault()
-    if (loading) return
+  e.preventDefault()
+  if (loading) return
 
-    setError('')
-    localStorage.removeItem('token')
-    localStorage.removeItem('role')
-    localStorage.removeItem('userId')
-    setLoading(true)
+  setError('')
+  localStorage.removeItem('token')
+  localStorage.removeItem('role')
+  localStorage.removeItem('userId')
+  setLoading(true)
 
-    try {
-      const res = await axios.post('/Auth/login', { email, password })
-      console.log('✅ Login response:', res.data) // Debug
+  try {
+    const res = await axios.post('/Auth/login', { email, password })
+    console.log('📦 Full response:', res)
+    console.log('📄 Response data:', res.data)
 
-      if (res.data?.token) {
-        localStorage.setItem('token', res.data.token)
-        localStorage.setItem('role', res.data.role)
-        localStorage.setItem('userId', String(res.data.userId))
+    // Check for token in various possible fields
+    const token = res.data?.token || res.data?.accessToken || res.data?.jwt || null
+    const role = res.data?.role || res.data?.userRole || null
+    const userId = res.data?.userId || res.data?.id || null
 
-        const redirectPath = res.data.role === 'Admin' ? '/admin' : '/voter'
-        console.log(`🔄 Redirecting to ${redirectPath}`) // Debug
+    if (token) {
+      localStorage.setItem('token', token)
+      localStorage.setItem('role', role || 'Voter')
+      localStorage.setItem('userId', String(userId || ''))
 
-        // ✅ FIX: Force a full page reload so ProtectedRoute picks up the token
-        window.location.href = redirectPath
-      } else if (res.data?.userId) {
-        nav('/verify-otp', { state: { userId: res.data.userId } })
-      } else {
-        setError('Login succeeded but no token received.')
-      }
-    } catch (err) {
-      console.error('❌ Login error:', err) // Debug
-      const errorMsg = err?.response?.data?.error || 'Login failed'
-      setError(errorMsg)
-    } finally {
-      setLoading(false)
+      const redirectPath = role === 'Admin' ? '/admin' : '/voter'
+      console.log(`🔄 Redirecting to ${redirectPath}`)
+      window.location.href = redirectPath
+    } else {
+      // If no token, show the raw response for debugging
+      setError(`No token received. Server responded with: ${JSON.stringify(res.data)}`)
     }
+  } catch (err) {
+    console.error('❌ Login error:', err)
+    const errorMsg = err?.response?.data?.error || 'Login failed'
+    setError(errorMsg)
+  } finally {
+    setLoading(false)
   }
-
+}
   useEffect(() => {
     if (location.state?.message) {
       setMessage(location.state.message)
