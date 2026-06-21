@@ -9,20 +9,40 @@ using Prometheus;
 var builder = WebApplication.CreateBuilder(args);
 
 // =========================
-// DATABASE (CLEAN + FIXED)
+// DATABASE (SMART SWITCHING)
 // =========================
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    var connectionString =
-        builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? Environment.GetEnvironmentVariable("POSTGRES_CONNECTION_STRING")
-        ?? "Host=postgres;Port=5432;Database=securevoting;Username=postgres;Password=postgres";
-
+    // Priority 1: Environment variable (Render sets this automatically)
+    var connectionString = Environment.GetEnvironmentVariable("POSTGRES_CONNECTION_STRING");
+    
+    // Priority 2: Check if we're running on Render (production)
+    if (string.IsNullOrEmpty(connectionString))
+    {
+        var isProduction = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production";
+        connectionString = isProduction 
+            ? builder.Configuration.GetConnectionString("RenderConnection")
+            : builder.Configuration.GetConnectionString("LocalConnection");
+    }
+    
+    // Priority 3: Fallback to DefaultConnection (your existing code)
+    if (string.IsNullOrEmpty(connectionString))
+    {
+        connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    }
+    
+    // Priority 4: Ultimate fallback (keeps your app running)
+    if (string.IsNullOrEmpty(connectionString))
+    {
+        connectionString = "Host=postgres;Port=5432;Database=securevoting;Username=postgres;Password=postgres";
+    }
+    
+    Console.WriteLine($"✅ Database connection configured.");
     options.UseNpgsql(connectionString);
 });
 
 // =========================
-// JWT
+// JWT (UNCHANGED)
 // =========================
 var jwt = builder.Configuration.GetSection("Jwt");
 var key = Encoding.UTF8.GetBytes(jwt["Key"]!);
@@ -45,7 +65,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 });
 
 // =========================
-// SERVICES
+// SERVICES (UNCHANGED)
 // =========================
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -75,13 +95,10 @@ builder.Services.AddSingleton<IHostedService>(sp =>
 var app = builder.Build();
 
 // =========================
-// MIDDLEWARE
+// MIDDLEWARE (UNCHANGED)
 // =========================
 app.UseSwagger();
 app.UseSwaggerUI();
-
-// ===== SAFE ADDITIONS: Health Check Endpoints =====
-// These don't affect your existing logic - they just add new routes
 
 // Root endpoint - shows API is running
 app.MapGet("/", () => Results.Ok(new { 
@@ -104,8 +121,6 @@ app.MapGet("/health", () => Results.Ok(new {
     database = "Connected"
 }));
 
-// ===== END OF SAFE ADDITIONS =====
-
 app.UseRouting();
 app.UseHttpMetrics();
 
@@ -118,7 +133,7 @@ app.MapControllers();
 app.MapMetrics();
 
 // =========================
-// DATABASE MIGRATION (FIXED + RETRY)
+// DATABASE MIGRATION (UNCHANGED)
 // =========================
 using (var scope = app.Services.CreateScope())
 {
