@@ -4,19 +4,25 @@ const resolveApiBase = () => {
   // 1. Use environment variable if set (Render)
   const envBase = import.meta?.env?.VITE_API_BASE
   if (envBase) {
-    // ✅ FIX: Ensure the base URL includes /api
-    // If it ends with /api, use it as-is; otherwise add /api
+    console.log('🔍 Using VITE_API_BASE:', envBase)
     if (envBase.endsWith('/api')) {
       return envBase
     }
     return `${envBase}/api`
   }
 
-  // 2. Local development
+  // 2. Check if we're running on Render (production)
+  //    Render sets this environment variable automatically
+  if (import.meta?.env?.PROD) {
+    console.log('🔍 Running in production (Render) – using backend URL')
+    return 'https://securevotingsystem.onrender.com/api'
+  }
+
+  // 3. Local development
   if (typeof window !== 'undefined') {
     const { hostname, port } = window.location
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      if (port === '5173' || port === '5172' || port === '5174') {
+      if (['5173', '5172', '5174'].includes(port)) {
         return 'http://localhost:5000/api'
       }
     }
@@ -27,14 +33,21 @@ const resolveApiBase = () => {
     }
   }
 
-  // 3. Fallback – relative path
+  // 4. Fallback – relative path (local development)
+  console.warn('⚠️ No API base set – using relative /api')
   return '/api'
 }
 
+// Get the base URL
 const base = resolveApiBase()
-console.log('✅ Axios base URL:', base) // ← Helpful for debugging
+console.log('✅ Axios base URL:', base)
 
-const instance = axios.create({ baseURL: base })
+const instance = axios.create({
+  baseURL: base,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
 
 // Track pending requests to prevent duplicates
 const pendingRequests = new Map()
@@ -43,10 +56,12 @@ const getRequestKey = (config) => {
   return `${config.method}:${config.url}:${JSON.stringify(config.data || {})}`
 }
 
-// Request interceptor: deduplicate authentication requests
+// Request interceptor: add token and deduplicate auth requests
 instance.interceptors.request.use(cfg => {
   const token = localStorage.getItem('token')
-  if (token) cfg.headers['Authorization'] = `Bearer ${token}`
+  if (token) {
+    cfg.headers['Authorization'] = `Bearer ${token}`
+  }
   
   // For auth endpoints, prevent duplicate requests
   if (cfg.url?.includes('/auth/')) {
@@ -67,9 +82,11 @@ instance.interceptors.request.use(cfg => {
   }
   
   return cfg
+}, (error) => {
+  return Promise.reject(error)
 })
 
-// Response interceptor: clean up pending requests
+// Response interceptor: clean up pending requests and handle 401
 instance.interceptors.response.use(
   (response) => {
     const requestKey = getRequestKey(response.config)
@@ -85,12 +102,15 @@ instance.interceptors.response.use(
     if (pendingRequests.has(requestKey)) {
       pendingRequests.delete(requestKey)
     }
+    
+    // Handle 401 Unauthorized
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
       localStorage.removeItem('role')
       localStorage.removeItem('userId')
       window.location.href = '/login'
     }
+    
     return Promise.reject(error)
   }
 )
