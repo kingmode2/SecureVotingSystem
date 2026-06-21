@@ -24,9 +24,10 @@ services:
       context: ../backend/SecureVotingSystem
       dockerfile: Dockerfile
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy   # ← Wait for Postgres to be ready
     environment:
-      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=securevoting;Username=postgres;Password=postgres
+      - POSTGRES_CONNECTION_STRING=Host=postgres;Port=5432;Database=securevoting;Username=postgres;Password=postgres;SSL Mode=Disable
     ports:
       - "5000:5000"
     restart: unless-stopped
