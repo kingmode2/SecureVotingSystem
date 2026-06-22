@@ -82,6 +82,12 @@ pipeline {
 
     post {
         success {
+            // ✅ Slack Notification - SUCCESS
+            slackSend(
+                color: 'good',
+                message: "✅ SUCCESS: Job '${env.JOB_NAME}' #${env.BUILD_NUMBER}\nURL: ${env.BUILD_URL}"
+            )
+
             mail to: 'warblank21@gmail.com',
             subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
             body: """
@@ -100,6 +106,12 @@ SERVICE STATUS:
         }
 
         failure {
+            // ❌ Slack Notification - FAILURE
+            slackSend(
+                color: 'danger',
+                message: "❌ FAILURE: Job '${env.JOB_NAME}' #${env.BUILD_NUMBER}\nURL: ${env.BUILD_URL}"
+            )
+
             mail to: 'warblank21@gmail.com',
             subject: "FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
             body: """
