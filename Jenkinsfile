@@ -83,18 +83,11 @@ pipeline {
     post {
         success {
             // ✅ Slack Notification - SUCCESS
-<<<<<<< HEAD
          slackSend(
     channel: '#notifications',
     color: 'good',
     message: "✅ SUCCESS: Job '${env.JOB_NAME}' #${env.BUILD_NUMBER}\nURL: ${env.BUILD_URL}"
 )
-=======
-            slackSend(
-                color: 'good',
-                message: "✅ SUCCESS: Job '${env.JOB_NAME}' #${env.BUILD_NUMBER}\nURL: ${env.BUILD_URL}"
-            )
->>>>>>> 89979610b25cfac178c92f57d2f845a8e852f33c
 
             mail to: 'warblank21@gmail.com',
             subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
