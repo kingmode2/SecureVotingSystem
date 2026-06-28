@@ -1,0 +1,108 @@
+services:
+
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: securevoting
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d securevoting"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - securevoting_net
+
+  backend:
+    build:
+      context: ../backend/SecureVotingSystem
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - POSTGRES_CONNECTION_STRING=Host=postgres;Port=5432;Database=securevoting;Username=postgres;Password=postgres;SSL Mode=Disable
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+    networks:
+      - securevoting_net
+
+  frontend:
+    build:
+      context: ../frontend
+    ports:
+      - "5173:80"
+    restart: unless-stopped
+    networks:
+      - securevoting_net
+
+  jenkins:
+    build:
+      context: .
+      dockerfile: Dockerfile.jenkins
+    restart: unless-stopped
+    user: root
+    privileged: true
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins-data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - securevoting_net
+
+  # ✅ Prometheus – now a SIBLING (same level as jenkins)
+  prometheus:
+    build:
+      context: ./prometheus
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    networks:
+      - securevoting_net
+
+  grafana:
+    image: grafana/grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - securevoting_net
+
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    networks:
+      - securevoting_net
+
+volumes:
+  postgres-data: {}
+  jenkins-data: {}
+  grafana-data: {}
+  pgadmin-data: {}
+
+networks:
+  securevoting_net:
+    driver: bridge

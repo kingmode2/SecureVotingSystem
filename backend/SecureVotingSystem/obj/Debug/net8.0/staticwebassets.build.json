@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "aVbX8kmLpXNc0p23oSIvngtKZmIJgxxGfS9QXqGlXV0=",
+  "Source": "SecureVotingSystem",
+  "BasePath": "_content/SecureVotingSystem",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}

@@ -1,0 +1,20 @@
+groups:
+  - name: secure-voting-alerts
+    rules:
+
+      - alert: BackendDown
+        expr: up{job="aspnet"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backend is down"
+          description: "ASP.NET backend is unreachable for 1 minute"
+
+      - alert: PrometheusDown
+        expr: up{job="prometheus"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Prometheus is down"
